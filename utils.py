@@ -34,7 +34,7 @@ def get_train():
     df2 = pd.read_csv('new_train_train.csv')
     df2['label'] = 1
     full_df = df2.append(df)
-    print "train:\nnum of ones: {}\nnum of zeros:{}".format(df2.shape[0],df.shape[0])
+    print "\ttrain:\n\tnum of ones: {}\n\tnum of zeros:{}".format(df2.shape[0],df.shape[0])
     full_df.to_csv('eval_test.csv', index=False)
 
 def get_test():
@@ -47,7 +47,7 @@ def get_test():
     df2 = pd.read_csv('new_train_test.csv')
     df2['label'] = 1
     full_df = df2.append(df)
-    print "test:\nnum of ones: {}\nnum of zeros:{}".format(df2.shape[0],df.shape[0])
+    print "test:\n\tnum of ones: {}\n\tnum of zeros:{}".format(df2.shape[0],df.shape[0])
     full_df.to_csv('train.csv', index=False)
 
 
@@ -109,5 +109,5 @@ def get_cross_val(k=10):
         train = pd.read_csv(train_path)
         test = pd.read_csv(test_path)
         experiments_dict[i] = (train,test)
-    pass
+    return experiments_dict
 
