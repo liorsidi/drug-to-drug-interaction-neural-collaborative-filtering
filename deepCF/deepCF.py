@@ -175,7 +175,7 @@ class NCF(object):
         # self.model = CFModel(n_items, n_items,optimizer=self.optimizer,
         #          loss=self.loss,activation = self.activation, factors=self.factors,
         #                      deep=self.deep, layers=self.layers, dropout=self.dropout,kernel_regularizer= self.kernel_regularizer)
-        #
+        #ssss
         self.model = self.build_model()
 
         self.model.summary()
