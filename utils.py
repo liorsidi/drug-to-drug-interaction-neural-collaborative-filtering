@@ -37,7 +37,6 @@ def get_train():
     print "train:\nnum of ones: {}\nnum of zeros:{}".format(df2.shape[0],df.shape[0])
     full_df.to_csv('eval_test.csv', index=False)
 
-
 def get_test():
     kfold_num = 10
     graph = nx.read_edgelist('train_no_dup_no_header.csv', delimiter=',', nodetype=str)
@@ -53,13 +52,15 @@ def get_test():
 
 
 
-def get_full_train_test():
+def get_full_train_test(write_to_file=True):
     df = pd.read_csv('train_no_dup.csv')
-    X_train, X_test = train_test_split(df, test_size=0.33, random_state=42)
-    X_train.to_csv('new_train_train.csv', index=False)
-    X_train.to_csv('new_train_train_no_header.csv', index=False, header=False)
-    X_test.to_csv('new_train_test.csv', index=False)
-
+    X_train, X_test = train_test_split(df, test_size=0.20)
+    if write_to_file:
+        X_train.to_csv('new_train_train.csv', index=False)
+        X_train.to_csv('new_train_train_no_header.csv', index=False, header=False)
+        X_test.to_csv('new_train_test.csv', index=False)
+    else:
+        return X_train, X_test
 
 
 def check_for_hafifa():
@@ -92,10 +93,21 @@ def remove_dup():
     df.to_csv('train_no_dup.csv', index=False)
     df.to_csv('train_no_dup_no_header.csv', index=False, header=False)
     pass
-#
-# remove_dup()
-# get_full_train_test()
-# get_train()
-# get_test()
 
-get_test_for_kaggle()
+
+def get_cross_val(k=10):
+    train_path = "./data_for_testing/eval_test.csv"
+    test_path = "./data_for_testing/eval_train.csv"
+
+    experiments_dict = {}
+
+    for i in range(k):
+        print "making experiment {}".format(i)
+        get_full_train_test()
+        get_train()
+        get_test()
+        train = pd.read_csv(train_path)
+        test = pd.read_csv(test_path)
+        experiments_dict[i] = (train,test)
+    pass
+
