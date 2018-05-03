@@ -4,7 +4,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 import numpy as np
 from sklearn.model_selection import train_test_split
-
+from numpy import genfromtxt
 
 
 def average_precision_at_k(k, class_correct):
@@ -111,3 +111,26 @@ def get_cross_val(k=10):
         experiments_dict[i] = (train,test)
     return experiments_dict
 
+
+
+
+def fix_data_before_submission(path = './data_for_kaggle/kaggle_test.csv'):
+    # my_data = genfromtxt('./data_for_kaggle/kaggle_test.csv', delimiter=',')
+    # np.apply_along_axis(myfunction, axis=1, arr=mymatrix)
+
+    df = pd.read_csv(path)
+    df_out = pd.DataFrame()
+
+    df_out['node1'] = df['node1'].where(df.node1 < df.node2, df['node2'])
+    df_out['node2'] = df['node2'].where(df.node1 < df.node2, df['node1'])
+    df_out["node1_node2"] = df_out["node1"].map(str) + "_"+ df_out["node2"].map(str)
+    df_out.to_csv('./data_for_kaggle/for_submission.csv', columns = ['node1_node2'], index=False)
+
+
+    print "done first part"
+    for idx, row in df_out.iterrows():
+        if row[0] > row[1]:
+            print "OH SHIT"
+
+
+# fix_data_before_submission('./custom_sol.csv')

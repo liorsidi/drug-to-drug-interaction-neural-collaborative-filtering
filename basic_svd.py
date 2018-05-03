@@ -7,15 +7,15 @@ from utils import average_precision_at_k, get_cross_val
 train_path = "./data_for_testing/eval_test.csv"
 test_path = "./data_for_testing/eval_train.csv"
 
-exp_dict = get_cross_val(10)
+exp_dict = get_cross_val(1)
 
 p_at_k_list = []
 
 for train, test in exp_dict.values():
-    # train = graphlab.SFrame.read_csv(train_path)
-    # test = graphlab.SFrame.read_csv(test_path)
-    train = graphlab.SFrame(train)
-    test = graphlab.SFrame(test)
+    train = graphlab.SFrame.read_csv(train_path)
+    test = graphlab.SFrame.read_csv(test_path)
+    # train = graphlab.SFrame(train)
+    # test = graphlab.SFrame(test)
 
     model = graphlab.recommender.ranking_factorization_recommender.create(train,
                                                                           user_id='node1',
@@ -30,6 +30,7 @@ for train, test in exp_dict.values():
     df = df.sort_values(by=['score'], ascending=False)
     # df["node1_node2"] = df["node1"].map(str) + "_"+ df["node2"].map(str)
     # df.to_csv('for_kaggle.csv', columns = ['node1_node2'], index=False)
+    df.to_csv('reccomend_result.csv', index=False)
     class_correct = list(df['label'])
     p_at_k_list.append(average_precision_at_k(100, class_correct))
     print "\n\nThe precision at k score is {}".format(average_precision_at_k(100, class_correct))
