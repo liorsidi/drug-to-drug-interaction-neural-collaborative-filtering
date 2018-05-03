@@ -7,6 +7,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 # from keras.preprocessing import sequence
 # from keras.utils import np_utils
+from data_reader import read_as_network_x
 
 use_new_version = 0
 show_graph = 0
@@ -195,8 +196,8 @@ def generate_data(corpus, window_size, V):
 
 
 def main():
-    graph = nx.gnp_random_graph(50, 0.04, seed=1234)
-    # graph = read_graph()
+    # graph = nx.gnp_random_graph(50, 0.04, seed=1234)
+    graph = read_as_network_x()
     random_walks = make_graph_and_calculate_centrality(graph)['String']
     # wevi_parser(random_walks, 5)
     a = list(generate_data(random_walks, 5, 50))
