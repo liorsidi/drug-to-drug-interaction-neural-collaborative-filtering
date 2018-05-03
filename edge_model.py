@@ -1,14 +1,16 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-import os
 import random
 from scipy.sparse import csr_matrix
-from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from collections import defaultdict
-random.seed(4)
+from datetime import datetime
 
+# region CONSTS
+K = 100
+random.seed(4)
+# endregion
 
 class DMBI_hackathon_ddi_utils():
     NODE_1 = 'node1'
@@ -75,56 +77,67 @@ class DMBI_hackathon_ddi_utils():
         score /= k
         return score
 
-# simple prediction class
+
 class link_prediction_predictor:
     def __init__(self, number_of_drugs):
         self.G = nx.Graph()
         self.G.add_nodes_from(range(number_of_drugs))
+        self.cls = None
 
     def fit(self, edge_list):
+        # TODO - remove
+        # edge_list = edge_list[:10]
+        # end TODO
         self.G.add_edges_from(edge_list)
-        edge_features = self.extract_features(edge_list)
-
+        # treat edges
+        print '{0} | extracting edge features'.format(str(datetime.now()))
+        edge_df, feature_names = self.extract_features(edge_list)
+        edge_df['edge'] = 1
+        # non-edges
+        print '{0} | extracting non-edge features'.format(str(datetime.now()))
+        nonedge_df, feature_names = self.extract_features()
+        nonedge_df['edge'] = 0
+        total_df = pd.concat([edge_df, nonedge_df])
+        self.cls = RandomForestClassifier(n_estimators=50, random_state=0, n_jobs=-1)
+        X = total_df[feature_names]
+        y = list(total_df['edge'])
+        print '{0} | actual fitting'.format(str(datetime.now()))
+        self.cls.fit(X, y)
 
     def predict(self, prediction_set=None):
-        self.extract_features(prediction_set)
         # if prediction_set is None then all non-existent edges in the graph will be used.
+        edge_df, feature_names = self.extract_features(prediction_set)
+        X = edge_df[feature_names]
+        preds = self.cls.predict_proba(X)
+        edge_probas = np.array([x[1] for x in preds])
+        edge_df['p'] = edge_probas
+        preds_df = edge_df[["node_name", "p"]]
+        return preds_df
 
-
-
-        # Communities
-        # https://networkx.github.io/documentation/stable/reference/algorithms/community.html
-
-        # https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.algorithms.link_prediction.cn_soundarajan_hopcroft.html#networkx.algorithms.link_prediction.cn_soundarajan_hopcroft
-        # common_neighbords = nx.cn_soundarajan_hopcroft(self.G, ebunch=prediction_set)
-
-        # https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.algorithms.link_prediction.within_inter_cluster.html#networkx.algorithms.link_prediction.within_inter_cluster
-        # nx.ra_index_soundarajan_hopcroft(self.G, )
-
-        # https: // networkx.github.io / documentation / networkx - 1.10 / reference / generated / networkx.algorithms.link_prediction.within_inter_cluster.html  # networkx.algorithms.link_prediction.within_inter_cluster
-        # nx.within_inter_cluster(...  )
-
-        # predictions are expected as described in write_solution_to_file. The values are suppose to be ordered by confidence.
-        return preds
-
-    def extract_features(self, prediction_set):
-        # res_alloc_vals = [(u1, v1) for (p, u1, v1) in
-        #          sorted([(prediction, u, v) for (u, v, prediction) in preds], reverse=True)]
-        # if ebunch is None then all non-existent edges in the graph will be used.
+    def extract_features(self, prediction_set=None):
         edge_features = defaultdict(dict)
+        print '{0} | extract_features: res_alloc'.format(str(datetime.now()))
         res_alloc = nx.resource_allocation_index(self.G, ebunch=prediction_set)
-        self.append_features(edge_features, feature_name='res_alloc', tufeature_list=res_alloc)
+        self.append_features(edge_features, feature_name='res_alloc', feature_list=res_alloc)
 
+        print '{0} | extract_features: jaccard_coef'.format(str(datetime.now()))
         jaccard_coef = nx.jaccard_coefficient(self.G, ebunch=prediction_set)
         self.append_features(edge_features, feature_name='jaccard_coef', feature_list=jaccard_coef)
 
+        print '{0} | extract_features: adamic_adar'.format(str(datetime.now()))
         adamic_adar = nx.adamic_adar_index(self.G, ebunch=prediction_set)
         self.append_features(edge_features, feature_name='adamic_adar', feature_list=adamic_adar)
 
+        print '{0} | extract_features: pref_attachment'.format(str(datetime.now()))
         pref_attachment = nx.preferential_attachment(self.G, ebunch=prediction_set)
         self.append_features(edge_features, feature_name='pref_attachment', feature_list=pref_attachment)
 
-        # to node list and feature lists
+        # reformat feature dictionary to a dataframe object
+        df, feature_names = self.feature_dict_to_df(edge_features)
+
+        return df, feature_names
+
+    def feature_dict_to_df(self, edge_features):
         edge_names = edge_features.keys()
         feature_names = edge_features[edge_names[0]].keys()
         data_dict = {
@@ -133,10 +146,9 @@ class link_prediction_predictor:
         for f_idx, f_name in enumerate(feature_names):
             f_column = [edge_features[edge].values()[f_idx] for edge in edge_features]
             # d = { 'node_name': ['m1', 'm2'], 'f1': [3, 4], 'f2': [4, 5] }
-            data_mock[f_name] = f_column
-        df = pd.DataFrame(data=data_mock)
-
-        return edge_features
+            data_dict[f_name] = f_column
+        df = pd.DataFrame(data=data_dict)
+        return df, feature_names
 
     def append_features(self, edge_features, feature_name, feature_list):
         for u, v, score in feature_list:
@@ -146,26 +158,26 @@ class link_prediction_predictor:
 DMBI_hackathon_ddi = DMBI_hackathon_ddi_utils()
 train_matrix = DMBI_hackathon_ddi.read_sparse_matrix(pd.read_csv('train.csv'))
 
-# Evaluate model. #Evalua
-# Note that holdout is based on random decision.
-# Test set contains new interactions that random selection does not emulate.
-
 m_train_holdout, validation_set = DMBI_hackathon_ddi.create_holdout_set(train_matrix)
 x, y = m_train_holdout.nonzero()  # x and y indices of nonzero cells (existing edges)
 edge_list = list(zip(x, y))
 link_prediction = link_prediction_predictor(DMBI_hackathon_ddi.number_of_drugs)
+print '{0} | outside fit'.format(str(datetime.now()))
 link_prediction.fit(edge_list)
-preds = link_prediction.predict(validation_set)
-class_correct = [train_matrix[x[0], x[1]] for x in preds]
-average_precision = DMBI_hackathon_ddi.average_precision_at_k(k=100, class_correct=class_correct)
+print '{0} | outside predict'.format(str(datetime.now()))
+preds_df = link_prediction.predict(validation_set)
+print '{0} | outside evaluation'.format(str(datetime.now()))
+preds_df = preds_df.sort_values(by='p', ascending=False)
+preds_df = preds_df.head(K)
+class_correct = [train_matrix[r[1]["node_name"][0], r[1]["node_name"][1]] for r in preds_df.iterrows()]
+average_precision = DMBI_hackathon_ddi.average_precision_at_k(k=K, class_correct=class_correct)
 print 'average precision @ 100: {0}'.format(average_precision)
 
-
 #Create final submission file#Create
-x,y = train_matrix.nonzero()
-num_interactions_train = len(x);assert len(x)==len(y)
-edge_list = list(zip(x,y))
-link_prediction = link_prediction_predictor(DMBI_hackathon_ddi.number_of_drugs)
-link_prediction.fit(edge_list)
-preds = link_prediction.predict()
-DMBI_hackathon_ddi.write_solution_to_file(preds,'sample_predictions.csv',num_interactions_train=num_interactions_train)
+# x,y = train_matrix.nonzero()
+# num_interactions_train = len(x);assert len(x)==len(y)
+# edge_list = list(zip(x,y))
+# link_prediction = link_prediction_predictor(DMBI_hackathon_ddi.number_of_drugs)
+# link_prediction.fit(edge_list)
+# preds = link_prediction.predict()
+# # DMBI_hackathon_ddi.write_solution_to_file(preds,'sample_predictions.csv',num_interactions_train=num_interactions_train)
