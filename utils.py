@@ -57,7 +57,7 @@ def get_full_train_test():
     df = pd.read_csv('train_no_dup.csv')
     X_train, X_test = train_test_split(df, test_size=0.33, random_state=42)
     X_train.to_csv('new_train_train.csv', index=False)
-    X_train.to_csv('new_train_train_no_header.csv', index=False,header=False)
+    X_train.to_csv('new_train_train_no_header.csv', index=False, header=False)
     X_test.to_csv('new_train_test.csv', index=False)
 
 
@@ -70,6 +70,18 @@ def check_for_hafifa():
     print only_ones_df.shape[0]
     comn_df[dup] = comn_df.drop_duplicates()
     print only_ones_df.shape[0]
+
+
+def get_test_for_kaggle():
+    graph = nx.read_edgelist('train_no_dup_no_header.csv', delimiter=',', nodetype=str)
+    print "no dup: {}".format(graph.number_of_edges())
+    # graph2 = nx.read_edgelist('train_no_header.csv', delimiter=',', nodetype=str)
+    # print "with dup: {}".format(graph.number_of_edges())
+    non_edges = nx.non_edges(graph)
+    df = pd.DataFrame(list(non_edges))
+    df = df.rename(columns={0: 'node1', 1: 'node2'})
+    print "num of zeros:{}".format(df.shape[0])
+    df.to_csv('./data_for_kaggle/kaggle_test.csv', index=False)
 
 
 def remove_dup():
@@ -86,3 +98,4 @@ def remove_dup():
 # get_train()
 # get_test()
 
+get_test_for_kaggle()
