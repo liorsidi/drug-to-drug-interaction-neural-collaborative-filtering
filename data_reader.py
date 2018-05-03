@@ -51,7 +51,7 @@ def get_cross_val_train_test(kfold_num):
 
 def get_nx_graph():
     kfold_num = 10
-    graph = nx.read_edgelist(path, delimiter=',', nodetype=str)
+    graph = nx.read_edgelist('train_no_header.csv', delimiter=',', nodetype=str)
     print "number of nodes: {}".format(graph.number_of_nodes())
     print "number of ednges: {}".format(graph.number_of_edges())
     non_edges = nx.non_edges(graph)
@@ -105,4 +105,5 @@ def get_full_train_test():
     X_train.to_csv('train_train.csv', index=False)
     X_test.to_csv('train_test.csv', index=False)
 # create_holdout_set(path)
+get_nx_graph()
 get_full_train_test()
