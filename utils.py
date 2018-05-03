@@ -1,3 +1,12 @@
+import random
+import networkx as nx
+import pandas as pd
+from scipy.sparse import csr_matrix
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+
+
 def average_precision_at_k(k, class_correct):
     # return average precision at k.
     # more examples: https://github.com/benhamner/Metrics/blob/master/Python/ml_metrics/average_precision.py
@@ -12,3 +21,68 @@ def average_precision_at_k(k, class_correct):
         score += hits / (i + 1.0)
     score /= k
     return score
+
+
+
+def get_train():
+    kfold_num = 10
+    graph = nx.read_edgelist('new_train_train_no_header.csv', delimiter=',', nodetype=str)
+    non_edges = nx.non_edges(graph)
+    df = pd.DataFrame(list(non_edges))
+    df['label'] = 0
+    df = df.rename(columns={0: 'node1', 1: 'node2'})
+    df2 = pd.read_csv('new_train_train.csv')
+    df2['label'] = 1
+    full_df = df2.append(df)
+    print "train:\nnum of ones: {}\nnum of zeros:{}".format(df2.shape[0],df.shape[0])
+    full_df.to_csv('eval_test.csv', index=False)
+
+
+def get_test():
+    kfold_num = 10
+    graph = nx.read_edgelist('train_no_dup_no_header.csv', delimiter=',', nodetype=str)
+    non_edges = nx.non_edges(graph)
+    df = pd.DataFrame(list(non_edges))
+    df['label'] = 0
+    df = df.rename(columns={0: 'node1', 1: 'node2'})
+    df2 = pd.read_csv('new_train_test.csv')
+    df2['label'] = 1
+    full_df = df2.append(df)
+    print "test:\nnum of ones: {}\nnum of zeros:{}".format(df2.shape[0],df.shape[0])
+    full_df.to_csv('train.csv', index=False)
+
+
+
+def get_full_train_test():
+    df = pd.read_csv('train_no_dup.csv')
+    X_train, X_test = train_test_split(df, test_size=0.33, random_state=42)
+    X_train.to_csv('new_train_train.csv', index=False)
+    X_train.to_csv('new_train_train_no_header.csv', index=False,header=False)
+    X_test.to_csv('new_train_test.csv', index=False)
+
+
+
+def check_for_hafifa():
+    df1 = pd.read_csv('eval_test.csv')
+    df2 = pd.read_csv('train.csv')
+    comn_df = df1.append(df2)
+    only_ones_df = comn_df[comn_df['label'] == 1]
+    print only_ones_df.shape[0]
+    comn_df[dup] = comn_df.drop_duplicates()
+    print only_ones_df.shape[0]
+
+
+def remove_dup():
+    graph = nx.read_edgelist('train_no_header.csv', delimiter=',', nodetype=str)
+    edge_list = graph.edges()
+    df = pd.DataFrame(list(edge_list))
+    df = df.rename(columns={0: 'node1', 1: 'node2'})
+    df.to_csv('train_no_dup.csv', index=False)
+    df.to_csv('train_no_dup_no_header.csv', index=False, header=False)
+    pass
+#
+# remove_dup()
+# get_full_train_test()
+# get_train()
+# get_test()
+
