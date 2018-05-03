@@ -120,7 +120,7 @@ class SimpleDomainEmbedder(object):
 
 
     def fit(self, X, y):
-        # print GPU or CPU
+        # print GPU or CPUss
         print 'fitting lstm model...' + str(self)
         print(device_lib.list_local_devices())
 
