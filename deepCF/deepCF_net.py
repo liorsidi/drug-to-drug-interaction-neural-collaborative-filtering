@@ -1,7 +1,7 @@
 import numpy as np
 from keras import Model
 from keras.callbacks import EarlyStopping
-from keras.layers import Embedding, Reshape, Merge, Dropout, Dense, dot, Input, Flatten, Activation
+from keras.layers import Embedding, Reshape, Merge, Dropout, Dense, dot, Input, Flatten, concatenate
 from keras.models import Sequential, load_model
 from keras.preprocessing.text import one_hot
 from keras.regularizers import l2
@@ -80,7 +80,7 @@ class CFModel(Sequential):
 
         self.compile(loss=loss, optimizer=optimizer)
 
-class NCF(object):
+class NCF_net(object):
     def __init__(self, epochs=10,
                  batch_size=1024,callback=None,shuffle=True,class_weight = {0: 1., 1: 10.},
                  optimizer='adadelta',prev = False, post = True,reduce_dim = 0,
@@ -116,10 +116,10 @@ class NCF(object):
         self.n_items = 0
         self.seed = seed
 
-    def predict(self,item1, item2):
+    def predict(self,item1, item2, p):
         item1_encoded = self.items_encoder.transform(item1)
         item2_encoded = self.items_encoder.transform(item2)
-        preds = self.model.predict([item1_encoded, item2_encoded],batch_size=2048).flatten()
+        preds = self.model.predict([item1_encoded, item2_encoded,p],batch_size=2048).flatten()
         return preds
 
     def __str__(self):
@@ -138,6 +138,7 @@ class NCF(object):
 
         input1 = Input(shape=(1,))
         input2 = Input(shape=(1,))
+
         emb_item = Embedding(self.n_items, self.factors, input_length=1)
         item1 = emb_item(input1)
         item1 = Reshape((self.factors,))(item1)
@@ -153,6 +154,9 @@ class NCF(object):
                 item2 = Dropout(self.dropout)(item2)
                 item2 = Dense(self.factors,activation =self.activation_hidden)(item2)
         concat_ = dot([item1, item2], axes = 1)
+
+        input3 = Input(shape=(2,))
+        concat_ = concatenate([input3,concat_])
         factors =  self.factors
         if self.reduce_dim > 0:
             factors = self.reduce_dim
@@ -164,8 +168,7 @@ class NCF(object):
 
         output_model = Dense(1, activation=self.activation)(concat_)
 
-
-        model = Model(inputs=[input1,input2], outputs=output_model)
+        model = Model(inputs=[input1,input2,input3], outputs=output_model)
 
         model.compile(loss=self.loss, optimizer=self.optimizer)
         return model
@@ -184,13 +187,8 @@ class NCF(object):
 
         return path + str(self)
 
-    def fit(self, item1, item2, y, validation = False):
-        # if self.activation == 'tanh':
-        #     y = np.array(y)
-        #     y[y<1] = -1
-        #     y = list(y)
-        #     self.class_weight[-1] = self.class_weight[0]
-        #     del self.class_weight[0]
+
+    def fit(self, item1, item2, p, y,validation = False):
         self.items_encoder = LabelEncoder()
 
         self.n_items = len(set(item1 + item2))
@@ -211,17 +209,20 @@ class NCF(object):
         if validation:
             item1_encoded_,item1_encoded_v,\
             item2_encoded_, item2_encoded_v,\
+            p_, p_v,\
             y_, y_v =\
-                train_test_split(item1_encoded,item2_encoded, y, test_size=0.2)
+                train_test_split(item1_encoded,item2_encoded,p, y, test_size=0.2)
 
-            self.model.fit([item1_encoded_, item2_encoded_], y_, batch_size=self.batch_size, epochs=self.epochs,
+            self.model.fit([item1_encoded_, item2_encoded_,p_], y_, batch_size=self.batch_size, epochs=self.epochs,
                            shuffle=self.shuffle, class_weight=self.class_weight, verbose=2, callbacks=
-                           [EarlyStopping(monitor='val_loss', min_delta=0.01, patience=5, verbose=0, mode='auto')],
-                           validation_data = ([item1_encoded_v, item2_encoded_v], y_v)
+                           [EarlyStopping(monitor='val_loss', min_delta=0.001, patience=5, verbose=0, mode='auto')],
+                           validation_data = ([item1_encoded_v, item2_encoded_v, p_v], y_v)
                            )
         else:
-            self.model.fit([item1_encoded, item2_encoded], y, batch_size=self.batch_size, epochs=self.epochs,
-                           shuffle=self.shuffle,class_weight=self.class_weight, verbose=2,callbacks =
-                           [EarlyStopping(monitor='loss', min_delta=0.01, patience=3, verbose=0, mode='auto')]
+            self.model.fit([item1_encoded, item2_encoded, p], y, batch_size=self.batch_size, epochs=self.epochs,
+                           shuffle=self.shuffle, class_weight=self.class_weight, verbose=2, callbacks=
+                           [EarlyStopping(monitor='loss', min_delta=0.01, patience=5, verbose=0, mode='auto')]
                            )
+
+
 
